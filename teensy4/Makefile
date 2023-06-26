@@ -27,15 +27,21 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# Use these lines for Teensy 4.0
-MCU ?= IMXRT1062
-MCU_LD ?= imxrt1062.ld
-MCU_DEF ?= ARDUINO_TEENSY40
-
-# Use these lines for Teensy 4.1
-#MCU ?= IMXRT1062
-#MCU_LD ?= imxrt1062_t41.ld
-#MCU_DEF ?= ARDUINO_TEENSY41
+ifeq ($(TEENSY_VER),4.0)
+	# Use these lines for Teensy 4.0
+	MCU := IMXRT1062
+	MCU_LD := imxrt1062.ld
+	MCU_DEF := ARDUINO_TEENSY40
+else
+	ifeq ($(TEENSY_VER),4.1)
+		# Use these lines for Teensy 4.1
+		MCU := IMXRT1062
+		MCU_LD := imxrt1062_t41.ld
+		MCU_DEF := ARDUINO_TEENSY41
+	else
+		$(error TEENSY_VER must be set to 4.0 or 4.1)
+	endif
+endif
 
 # The name of your project (used to name the compiled .hex file)
 TARGET ?= main
@@ -101,13 +107,13 @@ endif
 ifdef ARDUINOPATH
 
 # path location for Teensy Loader, teensy_post_compile and teensy_reboot (on Linux)
-TOOLSPATH = $(abspath $(ARDUINOPATH)/hardware/tools)
+TOOLSPATH ?= $(abspath $(ARDUINOPATH)/hardware/tools)
 
 # path location for Arduino libraries (currently not used)
-LIBRARYPATH = $(abspath $(ARDUINOPATH)/libraries)
+LIBRARYPATH ?= $(abspath $(ARDUINOPATH)/libraries)
 
 # path location for the arm-none-eabi compiler
-COMPILERPATH = $(abspath $(ARDUINOPATH)/hardware/tools/arm/bin)
+COMPILERPATH ?= $(abspath $(ARDUINOPATH)/hardware/tools/arm/bin)
 
 else
 # Default to the normal GNU/Linux compiler path if NO_ARDUINO
@@ -120,8 +126,10 @@ endif
 # Settings below this point usually do not need to be edited
 #************************************************************************
 
+THIS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+
 # CPPFLAGS = compiler options for C and C++
-CPPFLAGS = -Wall -g -O2 $(CPUOPTIONS) -MMD $(OPTIONS) -I. -ffunction-sections -fdata-sections
+CPPFLAGS = -Wall -g -O2 $(CPUOPTIONS) -MMD $(OPTIONS) -I$(THIS_DIR) -ffunction-sections -fdata-sections
 
 # compiler options for C++ only
 CXXFLAGS = -std=gnu++17 -felide-constructors -fno-exceptions -fpermissive -fno-rtti -Wno-error=narrowing
@@ -130,7 +138,7 @@ CXXFLAGS = -std=gnu++17 -felide-constructors -fno-exceptions -fpermissive -fno-r
 CFLAGS =
 
 # linker options
-LDFLAGS = -Os -Wl,--gc-sections,--relax $(SPECS) $(CPUOPTIONS) -T$(MCU_LD)
+LDFLAGS = -Os -Wl,--gc-sections,--relax $(SPECS) $(CPUOPTIONS) -T$(THIS_DIR)/$(MCU_LD)
 
 # additional libraries to link
 LIBS = -larm_cortexM7lfsp_math -lm -lstdc++
@@ -144,8 +152,8 @@ SIZE = $(COMPILERPATH)/arm-none-eabi-size
 
 # automatically create lists of the sources and objects
 # TODO: this does not handle Arduino libraries yet...
-C_FILES := $(wildcard *.c)
-CPP_FILES := $(wildcard *.cpp)
+C_FILES := $(wildcard *.c) $(wildcard $(THIS_DIR)/*.c)
+CPP_FILES := $(wildcard *.cpp) $(wildcard $(THIS_DIR)/*.cpp)
 OBJS := $(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o)
 
 
@@ -153,7 +161,7 @@ OBJS := $(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o)
 
 all: $(TARGET).hex
 
-$(TARGET).elf: $(OBJS) $(MCU_LD)
+$(TARGET).elf: $(OBJS) $(THIS_DIR)/$(MCU_LD)
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
 %.hex: %.elf
