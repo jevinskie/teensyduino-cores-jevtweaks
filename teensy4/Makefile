@@ -176,4 +176,4 @@ endif
 -include $(OBJS:.o=.d)
 
 clean:
-	rm -f *.o *.d $(TARGET).elf $(TARGET).hex
+	rm -f *.o *.d $(TARGET).elf $(TARGET).hex $(THIS_DIR)/*.o $(THIS_DIR)/*.d
